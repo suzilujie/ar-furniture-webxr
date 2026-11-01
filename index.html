@@ -1,0 +1,174 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>AR 家具摆放 · Week 1 场景</title>
+<style>
+  :root {
+    --bg: #0f172a;
+    --panel: rgba(15, 23, 42, 0.82);
+    --line: #334155;
+    --text: #e2e8f0;
+    --dim: #94a3b8;
+    --faint: #64748b;
+    --blue: #60a5fa;
+    --green: #4ade80;
+    --mono: Consolas, "Courier New", monospace;
+  }
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  html, body { height: 100%; overflow: hidden; background: var(--bg); color-scheme: dark; }
+  body {
+    font-family: "Segoe UI", "PingFang SC", "Microsoft YaHei", system-ui, sans-serif;
+    font-size: 14px; color: var(--text);
+  }
+  canvas { display: block; touch-action: none; }
+
+  .panel {
+    position: fixed; z-index: 10;
+    background: var(--panel);
+    border: 1px solid var(--line);
+    padding: 12px 14px;
+    backdrop-filter: blur(6px);
+  }
+
+  #info { top: 16px; left: 16px; max-width: 300px; }
+  #info h1 { font-size: 15px; font-weight: 700; color: #f1f5f9; margin-bottom: 4px; }
+  #info .sub { font-size: 12.5px; color: var(--blue); margin-bottom: 8px; }
+  #info .row { font-size: 12.5px; color: var(--dim); line-height: 1.7; }
+  #info .row b { color: var(--text); font-weight: 600; }
+
+  #hint { bottom: 16px; left: 16px; font-size: 12.5px; color: var(--dim); line-height: 1.9; }
+  #hint span.k {
+    display: inline-block; min-width: 18px; text-align: center;
+    font-family: var(--mono); font-size: 11.5px; color: var(--text);
+    border: 1px solid var(--line); padding: 0 4px; margin-right: 4px;
+  }
+
+  #fps {
+    top: 16px; right: 16px;
+    font-family: var(--mono); font-size: 12.5px; color: var(--dim);
+    padding: 8px 12px; min-width: 96px;
+  }
+  #fps b { color: var(--green); font-weight: 700; }
+
+  /* VR 按钮覆盖 three.js 默认样式 */
+  #vr-slot { position: fixed; z-index: 10; bottom: 16px; right: 16px; }
+  #vr-slot button {
+    font-family: inherit; font-size: 12.5px; color: var(--dim);
+    background: var(--panel); border: 1px solid var(--line);
+    padding: 8px 14px; cursor: pointer; outline: none;
+  }
+  #vr-slot button:hover { color: var(--text); border-color: #475569; }
+
+  /* ===== 模式工具条 ===== */
+  #toolbar {
+    bottom: 16px; left: 50%; transform: translateX(-50%);
+    display: flex; align-items: center; gap: 6px;
+    padding: 8px 10px;
+  }
+  #toolbar button {
+    font-family: inherit; font-size: 12.5px; color: var(--dim);
+    background: transparent; border: 1px solid var(--line);
+    padding: 5px 12px; cursor: pointer; outline: none;
+    white-space: nowrap;
+  }
+  #toolbar button:hover { color: var(--text); border-color: #475569; }
+  #toolbar button.on { color: #0f172a; background: var(--blue); border-color: var(--blue); font-weight: 600; }
+  #toolbar .sep { width: 1px; height: 18px; background: var(--line); margin: 0 4px; }
+
+  /* ===== 状态行 ===== */
+  #status {
+    bottom: 68px; left: 50%; transform: translateX(-50%);
+    font-size: 12.5px; color: var(--dim); padding: 6px 12px;
+    white-space: nowrap;
+  }
+  #status b { color: var(--blue); font-weight: 600; }
+  #status i { color: var(--green); font-style: normal; }
+
+  /* 运行期错误提示条 */
+  #err {
+    display: none;
+    position: fixed; z-index: 20; top: 0; left: 0; right: 0;
+    background: #7a2b2b; color: #fff; font-family: var(--mono);
+    font-size: 12.5px; padding: 8px 14px; line-height: 1.6;
+  }
+
+  @media (max-width: 640px) {
+    #info { max-width: 210px; padding: 10px 12px; }
+    #hint { display: none; }
+    #status { font-size: 11.5px; padding: 4px 8px; bottom: 62px; }
+    #toolbar { gap: 3px; padding: 6px; }
+    #toolbar button { padding: 4px 8px; font-size: 11.5px; }
+  }
+</style>
+</head>
+<body>
+
+<div id="info" class="panel">
+  <h1>AR 家具摆放 · Week 2</h1>
+  <div class="sub">桌面预览 / Desktop Preview</div>
+  <div class="row">
+    沙发（sofa）<b>2.00 × 0.90 × 0.87 m</b><br>
+    地面网格（grid）间距 <b>0.5 m</b><br>
+    绿色标尺高度 <b>1.00 m</b><br>
+    1 单位 = 1 米（unit = 1 meter）
+  </div>
+</div>
+
+<div id="fps" class="panel">FPS <b>--</b></div>
+
+<div id="hint" class="panel">
+  <span class="k">拖</span>左键拖动旋转视角　<span class="k">滚</span>滚轮缩放<br>
+  <span class="k">R</span>重置视角　<span class="k">G</span>切换网格<br>
+  <span class="k">Q</span><span class="k">E</span>旋转选中家具　<span class="k">Del</span>删除
+</div>
+
+<div id="status" class="panel">模式：<b>视角</b>　已放置 <i>0</i> 件</div>
+
+<div id="toolbar" class="panel">
+  <button data-mode="view" class="on">视角</button>
+  <button data-mode="place">摆放</button>
+  <button data-mode="edit">调整</button>
+  <span class="sep"></span>
+  <button data-act="rotl">↺ 左转 15°</button>
+  <button data-act="rotr">↻ 右转 15°</button>
+  <span class="sep"></span>
+  <button data-act="del">删除</button>
+  <button data-act="clear">清空</button>
+</div>
+
+<div id="vr-slot"></div>
+
+<div id="err"></div>
+
+<script>
+// 运行期错误集中显示，避免「白屏但不知道原因」
+(function () {
+  var box = document.getElementById('err');
+  function show(msg) {
+    box.style.display = 'block';
+    box.textContent = '运行错误：' + msg;
+  }
+  window.addEventListener('error', function (e) {
+    show(e.message + (e.filename ? ' @ ' + e.filename.split('/').pop() + ':' + e.lineno : ''));
+  });
+  window.addEventListener('unhandledrejection', function (e) {
+    show(String(e.reason));
+  });
+})();
+</script>
+
+<script type="importmap">
+{
+  "imports": {
+    "three": "./vendor/three/build/three.module.js",
+    "three/addons/": "./vendor/three/examples/jsm/"
+  }
+}
+</script>
+
+<script type="module" src="./src/main.js"></script>
+
+</body>
+</html>
