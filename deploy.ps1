@@ -49,27 +49,38 @@ if (-not (Test-Path '.git')) {
   git commit -q -m "update: WebXR demo" 2>&1 | Out-Null   # 无改动时会失败，忽略
 }
 
-# 3) create remote if needed, then push
+# 3) always work on 'main' (git 2.25 defaults to 'master', which breaks Pages)
+git branch -M main 2>&1 | Out-Null
+
+# 4) create remote if needed
 gh repo view "$user/$RepoName" --json name 2>&1 | Out-Null
 $repoExists = ($LASTEXITCODE -eq 0)
 
-if ($repoExists) {
-  Write-Host '  remote repo exists, pushing ...'
-  git branch -M main 2>&1 | Out-Null
-  $remotes = git remote 2>&1
-  if (-not ($remotes -match 'origin')) {
-    git remote add origin ("https://github.com/{0}/{1}.git" -f $user, $RepoName) 2>&1 | Out-Null
-  }
-  git push -u origin main 2>&1 | Out-Null
-  if ($LASTEXITCODE -ne 0) { Fail 'git push failed (check gh auth / network)' }
-} else {
-  Write-Host '  creating repo and pushing ...'
+if (-not $repoExists) {
+  Write-Host '  creating repo ...'
   $vis = if ($Private) { '--private' } else { '--public' }
-  gh repo create $RepoName $vis --source=. --remote=origin --push 2>&1 | Out-Null
+  gh repo create $RepoName $vis 2>&1 | Out-Null
   if ($LASTEXITCODE -ne 0) { Fail 'gh repo create failed' }
 }
 
-# 4) enable Pages (idempotent: try POST, fall back to PUT)
+$remotes = git remote 2>&1
+if (-not ($remotes -match 'origin')) {
+  git remote add origin ("https://github.com/{0}/{1}.git" -f $user, $RepoName) 2>&1 | Out-Null
+}
+
+# 5) push with gh token: plain HTTPS push has no stored credential
+Write-Host '  pushing ...'
+$token = (gh auth token) 2>&1
+if ($LASTEXITCODE -ne 0) { Fail 'cannot read gh token' }
+$token = "$token".Trim()
+$pushUrl = "https://x-access-token:$token@github.com/$user/$RepoName.git"
+git push -u $pushUrl main 2>&1 | Out-Null
+if ($LASTEXITCODE -ne 0) { Fail 'git push failed (check gh auth / network)' }
+
+# 6) make sure default branch is main
+gh api -X PATCH "repos/$user/$RepoName" -f default_branch=main 2>&1 | Out-Null
+
+# 7) enable Pages (idempotent: try POST, fall back to PUT)
 Write-Host '  enabling GitHub Pages ...'
 gh api -X POST "repos/$user/$RepoName/pages" -f "source[branch]=main" -f "source[path]=/" 2>&1 | Out-Null
 if ($LASTEXITCODE -ne 0) {
