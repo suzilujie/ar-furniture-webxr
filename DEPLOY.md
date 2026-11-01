@@ -2,6 +2,15 @@
 
 目标：拿到一个 **HTTPS 公开链接**，手机可访问、可发给任何人。
 
+## 已部署（2026-11-01）
+
+| 项 | 值 |
+|---|---|
+| 仓库 | https://github.com/suzilujie/ar-furniture-webxr （public） |
+| 站点 | https://suzilujie.github.io/ar-furniture-webxr/ |
+| 分支 | `main`（根目录发布） |
+| 验证 | 首页 200；`/src/*.js`、`/vendor/three/**` 均 200 |
+
 > 为什么必须 HTTPS：WebXR 与 `navigator.xr` 只在安全上下文（secure context）下可用。`file://` 不行，局域网 `http://192.168.x.x` 也不行（除 localhost）。
 
 ## 一键方式（推荐）
@@ -50,6 +59,10 @@ gh repo create ar-furniture-webxr --public --source=. --remote=origin --push
 | 手机打开卡顿 | 首屏要下 1.2MB 的 three.module.js | 正常。后续可换 `three.module.min.js` |
 | VR 按钮显示 NOT SUPPORTED | 不在头显浏览器里 | 预期行为 |
 | 私有仓库开了 Pages 却打不开 | 免费账号不支持私有仓库发布 Pages | 只能公开，或升级套餐 |
+| Pages API 报 `The main branch must exist` | git 2.25 默认分支是 `master`，仓库建出来只有 master | `git branch -M main` → 推送 → `gh api -X PATCH repos/<u>/<r> -f default_branch=main` |
+| `git push` 卡在 `could not read Username` | 命令行 git 没有存储 HTTPS 凭据（`gh` 有，但 git 没有） | 用 token 推送：`git push https://x-access-token:$(gh auth token)@github.com/<u>/<r>.git main` |
+
+> 上面两条都已写进 `deploy.ps1`，重跑脚本不会再踩。
 
 ## 检查清单
 
